@@ -5,9 +5,10 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws --version
-      # Cleanly extract the base registry domain name from the repository URI
-      - REGISTRY_URL=$(echo $REPOSITORY_URI | cut -d'/' -f1)
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REGISTRY_URL
+      # Cleanly extract just the domain using sed to ensure zero trailing characters or repository names remain
+      - ECR_DOMAIN=$(echo $REPOSITORY_URI | sed -e 's/\/.*$//')
+      - echo "Logging into domain $ECR_DOMAIN"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_DOMAIN
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:-latest}
   build:
