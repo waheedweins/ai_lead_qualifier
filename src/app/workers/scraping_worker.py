@@ -2,11 +2,13 @@ import sys
 from src.app.core.logging import logger
 from src.app.core.database import SessionLocal
 from src.app.scrapers.google_maps import GoogleMapsScraper
-from src.app.scrapers.lead_ingestor import ingest_leads
 
 def run_scraping_job(query: str) -> int:
     # Explicitly flush stdout so Docker logs show everything in real-time
     print(f"DEBUG WORKER: Initiating scraping task for query: {query}", flush=True)
+    
+    # Lazy import inside the execution logic to stop startup dependency crashes
+    from src.app.scrapers.lead_ingestor import ingest_leads
     
     db = SessionLocal()
     try:
