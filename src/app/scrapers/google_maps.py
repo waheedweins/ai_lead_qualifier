@@ -4,7 +4,6 @@ from src.app.core.logging import logger
 
 class GoogleMapsScraper:
     def __init__(self):
-        # Retrieve the API token from the environment variables
         self.token = os.getenv("APIFY_TOKEN")
         if not self.token:
             logger.error("APIFY_TOKEN variable is completely missing from runtime environment configurations.")
@@ -14,13 +13,13 @@ class GoogleMapsScraper:
     def scrape(self, search_query: str) -> list:
         logger.info(f"Launching Apify search automation query execution context: {search_query}")
         try:
-            # Call the Google Maps Scraper Actor on Apify
+            # Switched to the verified, official Apify store actor identifier
             run_input = {
                 "searchStrings": [search_query],
                 "maxCrawledPlacesPerSearch": 10,
                 "language": "en",
             }
-            run = self.client.actor("compass/google-maps-scraper").call(run_input=run_input)
+            run = self.client.actor("apify/google-maps-scraper").call(run_input=run_input)
             
             # Fetch the results from the dataset
             dataset_items = list(self.client.dataset(run["defaultDatasetId"]).list_items().items)
