@@ -1,4 +1,3 @@
-%%writefile src/app/core/settings.py
 import json
 import logging
 import boto3
