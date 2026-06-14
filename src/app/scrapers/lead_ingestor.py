@@ -1,4 +1,3 @@
-%%writefile src/app/scrapers/lead_ingestor.py
 from sqlalchemy.orm import Session
 from src.app.services.lead_service import LeadService
 from src.app.schemas.lead import LeadCreate
