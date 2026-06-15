@@ -12,7 +12,7 @@ def execute_apify_scraping_workflow(query: str, session_factory):
     Executes the real-time Google Maps scraping sequence by communicating 
     directly with the official Apify marketplace actor backend ecosystem.
     """
-    # FIXED: Absolute path import from root 'src' to match your repository layout
+    # Absolute path import from root 'src' to match your repository layout
     from src.app.main import Lead
 
     apify_token = os.getenv("APIFY_API_TOKEN")
@@ -22,21 +22,18 @@ def execute_apify_scraping_workflow(query: str, session_factory):
 
     client = ApifyClient(apify_token)
     
-    # Flawless Input Configuration for universal Google Maps Scraper Actors
+    # Standard minimal payload layout recognized across all versions
     run_input = {
         "searchStrings": [query],
-        "maxCrawledPlacesPerSearch": 30,
-        "language": "en",
-        "exportPlaceUrls": False,
-        "includeWebsites": True,
-        "skipClosedPlaces": False
+        "maxCrawledPlacesPerSearch": 10,  # Lowered limit to ensure fast, testing-friendly execution
+        "language": "en"
     }
     
     try:
         logger.info(f"Launching Apify search automation query execution context: {query}")
         
-        # FIXED: Updated marketplace actor handle name to resolve 'Actor not found' issue
-        run = client.actor("compass/google-maps-scraper").call(run_input=run_input)
+        # Using the absolute production shortcut handle for the Google Maps Scraper
+        run = client.actor("apify/google-maps-scraper").call(run_input=run_input)
         
         # Fetch data dictionary items array matrix from the completed dataset loop run
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
@@ -47,15 +44,14 @@ def execute_apify_scraping_workflow(query: str, session_factory):
         try:
             inserted_count = 0
             for item in dataset_items:
-                # Fallback lookups to support multiple Apify schema variations cleanly
-                title = item.get("title") or item.get("name") or "Unknown Business"
+                # Robust fallback checking for variable schema maps
+                title = item.get("title") or item.get("name")
+                if not title or title == "Unknown Business":
+                    continue
+                    
                 phone = item.get("phone") or item.get("internationalPhone") or None
                 address = item.get("address") or item.get("locatedIn") or None
                 email = item.get("email") or "no-email@fallback.com"
-                
-                # Sanitize empty records
-                if title == "Unknown Business" and not phone:
-                    continue
 
                 # Deduplication check: Avoid inserting duplicates if phone number exists
                 if phone:
