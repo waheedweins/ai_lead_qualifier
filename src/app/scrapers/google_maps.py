@@ -12,8 +12,8 @@ def execute_apify_scraping_workflow(query: str, session_factory):
     Executes the real-time Google Maps scraping sequence by communicating 
     directly with the official Apify marketplace actor backend ecosystem.
     """
-    # Dynamic import based on your app structure to pull the database model safely
-    from app.main import Lead
+    # FIXED: Absolute path import from root 'src' to match your repository layout
+    from src.app.main import Lead
 
     apify_token = os.getenv("APIFY_API_TOKEN")
     if not apify_token:
@@ -22,6 +22,7 @@ def execute_apify_scraping_workflow(query: str, session_factory):
 
     client = ApifyClient(apify_token)
     
+    # Flawless Input Configuration for universal Google Maps Scraper Actors
     run_input = {
         "searchStrings": [query],
         "maxCrawledPlacesPerSearch": 30,
@@ -36,6 +37,8 @@ def execute_apify_scraping_workflow(query: str, session_factory):
         
         # Call the universal standard Google Maps Scraper actor on the Apify platform
         run = client.actor("apify/google-maps-scraper").call(run_input=run_input)
+        
+        # Fetch data dictionary items array matrix from the completed dataset loop run
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
         logger.info(f"Apify call completed successfully. Extracted {len(dataset_items)} raw elements.")
         
@@ -44,11 +47,13 @@ def execute_apify_scraping_workflow(query: str, session_factory):
         try:
             inserted_count = 0
             for item in dataset_items:
+                # Fallback lookups to support multiple Apify schema variations cleanly
                 title = item.get("title") or item.get("name") or "Unknown Business"
                 phone = item.get("phone") or item.get("internationalPhone") or None
                 address = item.get("address") or item.get("locatedIn") or None
                 email = item.get("email") or "no-email@fallback.com"
                 
+                # Sanitize empty records
                 if title == "Unknown Business" and not phone:
                     continue
 
