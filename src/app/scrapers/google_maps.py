@@ -35,8 +35,8 @@ def execute_apify_scraping_workflow(query: str, session_factory):
     try:
         logger.info(f"Launching Apify search automation query execution context: {query}")
         
-        # Call the universal standard Google Maps Scraper actor on the Apify platform
-        run = client.actor("apify/google-maps-scraper").call(run_input=run_input)
+        # FIXED: Updated marketplace actor handle name to resolve 'Actor not found' issue
+        run = client.actor("compass/google-maps-scraper").call(run_input=run_input)
         
         # Fetch data dictionary items array matrix from the completed dataset loop run
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
