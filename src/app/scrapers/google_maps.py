@@ -1,4 +1,3 @@
-%%writefile src/app/scrapers/google_maps.py
 import os
 import logging
 from apify_client import ApifyClient
