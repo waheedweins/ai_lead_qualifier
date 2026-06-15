@@ -1,40 +1,47 @@
 import os
 from apify_client import ApifyClient
+
 from src.app.core.logging import logger
 
 
 class GoogleMapsScraper:
+    """
+    Google Maps scraper powered by Apify.
+    """
 
     def __init__(self):
-        self.token = os.getenv("APIFY_TOKEN")
+        self.token = os.getenv("APIFY_API_TOKEN")
 
         logger.info(
-            f"APIFY_TOKEN exists: {bool(self.token)}"
+            f"APIFY_API_TOKEN present: {bool(self.token)}"
         )
 
-        if self.token:
-            logger.info(
-                f"APIFY_TOKEN length: {len(self.token)}"
+        if not self.token:
+            logger.error(
+                "APIFY_API_TOKEN variable is missing from runtime environment."
             )
 
-        if not self.token:
             raise ValueError(
-                "APIFY_TOKEN missing from runtime environment."
+                "Missing APIFY_API_TOKEN configuration environment value."
             )
 
         self.client = ApifyClient(self.token)
 
-    def scrape(self, search_query: str) -> list:
+    def scrape(
+        self,
+        search_query: str,
+        max_results: int = 10,
+    ) -> list:
 
         try:
             logger.info(
-                f"Starting Apify scrape: {search_query}"
+                f"Starting Apify Google Maps scrape for query: {search_query}"
             )
 
             run_input = {
                 "searchStrings": [search_query],
-                "maxCrawledPlacesPerSearch": 10,
-                "language": "en"
+                "maxCrawledPlacesPerSearch": max_results,
+                "language": "en",
             }
 
             run = self.client.actor(
@@ -44,7 +51,7 @@ class GoogleMapsScraper:
             )
 
             logger.info(
-                f"Actor run id: {run.get('id')}"
+                f"Apify actor completed successfully. Run ID: {run.get('id')}"
             )
 
             dataset_items = list(
@@ -54,13 +61,13 @@ class GoogleMapsScraper:
             )
 
             logger.info(
-                f"Returned records: {len(dataset_items)}"
+                f"Retrieved {len(dataset_items)} records from Apify."
             )
 
             return dataset_items
 
         except Exception as e:
             logger.exception(
-                f"Apify execution failed: {str(e)}"
+                f"Apify scraping failed: {str(e)}"
             )
             raise
