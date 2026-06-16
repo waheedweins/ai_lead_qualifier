@@ -1,4 +1,3 @@
-%%writefile src/app/main.py
 import logging
 from fastapi import FastAPI, BackgroundTasks, Depends
 from pydantic import BaseModel
