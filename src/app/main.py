@@ -1,3 +1,4 @@
+%%writefile src/app/main.py
 import logging
 from fastapi import FastAPI, BackgroundTasks, Depends
 from pydantic import BaseModel
@@ -7,6 +8,13 @@ from typing import List
 # Internal absolute imports matching your repository schema
 from src.app.database import SessionLocal, engine, Base
 from src.app.scrapers.google_maps import execute_apify_scraping_workflow
+
+# Explicitly alias or verify your SQLAlchemy model matches what the scraper looks for
+try:
+    from src.app.database import Lead
+except ImportError:
+    # Fallback definition if your database file names it LeadModel instead of Lead
+    from src.app.database import LeadModel as Lead
 
 # Initialize database schema components
 Base.metadata.create_all(bind=engine)
@@ -41,25 +49,20 @@ class LeadResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# --- SOLUTIONS INCLUDED BELOW ---
-
 @app.get("/health", status_code=200)
 def health_check():
     """
     Lightweight health probe endpoint for AWS ALB target group validation.
-    Returns instantly with HTTP 200 to satisfy tight 5s default thresholds[cite: 7, 63].
     """
     return {"status": "healthy"}
 
 @app.post("/scrape/", status_code=200)
 def trigger_scraping_pipeline(query: str, background_tasks: BackgroundTasks):
     """
-    Non-blocking endpoint that offloads the execution sequence directly to 
-    FastAPI's managed background thread pool to prevent API gateway timeouts.
+    Non-blocking endpoint that offloads execution directly to background workers.
     """
     logger.info(f"Received scrape request query parameter: '{query}'. Handing off to background worker pool.")
     
-    # Offload the execution safely to prevent worker thread blocking
     background_tasks.add_task(
         execute_apify_scraping_workflow,
         query=query,
@@ -75,8 +78,7 @@ def trigger_scraping_pipeline(query: str, background_tasks: BackgroundTasks):
 @app.get("/leads/", response_model=List[LeadResponse])
 def get_historical_leads(db: Session = Depends(get_db)):
     """
-    Retrieves all collected lead profile models committed to the relational datastore.
+    Retrieves all collected lead profile models committed to the datastore.
     """
-    from src.app.database import LeadModel  # Adjust import inline if your model class differs
-    leads = db.query(LeadModel).all()
+    leads = db.query(Lead).all()
     return leads
