@@ -32,8 +32,8 @@ def execute_apify_scraping_workflow(query: str, session_factory):
     try:
         logger.info(f"Launching Apify search automation query execution context: {query}")
         
-        # Using the absolute production shortcut handle for the Google Maps Scraper
-        run = client.actor("apify/google-maps-scraper").call(run_input=run_input)
+        # AMENDED: Swapped to the explicit unique identifier string to bypass name lookup errors entirely
+        run = client.actor("compass~google-maps-scraper").call(run_input=run_input)
         
         # Fetch data dictionary items array matrix from the completed dataset loop run
         dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
