@@ -17,16 +17,22 @@ class GoogleMapsScraper:
         self.client = ApifyClient(settings.APIFY_API_TOKEN)
 
     def scrape(self, search_query: str, max_results: int = 20) -> list[dict]:
+        # FIX 1: Changed "searchStrings" to "searchStringsArray" to match the Apify Schema
         run_input = {
-            "searchStrings": [search_query],
+            "searchStringsArray": [search_query],
             "maxCrawledPlacesPerSearch": max_results,
             "language": "en",
         }
 
         logger.info(f"Launching Apify actor for query: '{search_query}'")
         try:
-            run = self.client.actor("compass~google-maps-scraper").call(run_input=run_input)
-            items = self.client.dataset(run["defaultDatasetId"]).list_items().items
+            # FIX 2: Corrected the actor path string identifier
+            run = self.client.actor("compass/crawler-google-places").call(run_input=run_input)
+            
+            # FIX 3: Safely extract dataset ID property fields from the run object
+            dataset_id = run.get("defaultDatasetId") if hasattr(run, "get") else run["defaultDatasetId"]
+            
+            items = self.client.dataset(dataset_id).list_items().items
             logger.info(f"Apify returned {len(items)} raw items for '{search_query}'")
             return items
         except Exception as e:
