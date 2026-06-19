@@ -1,28 +1,30 @@
-import sys
+import logging
 from src.app.core.logging import logger
 from src.app.core.database import SessionLocal
 from src.app.scrapers.google_maps import GoogleMapsScraper
+from src.app.scrapers.lead_ingestor import ingest_leads
+
 
 def run_scraping_job(query: str) -> int:
-    # Explicitly flush stdout so Docker logs show everything in real-time
-    print(f"DEBUG WORKER: Initiating scraping task for query: {query}", flush=True)
-    
-    # Lazy import inside the execution logic to stop startup dependency crashes
-    from src.app.scrapers.lead_ingestor import ingest_leads
-    
+    """
+    Synchronous scraping job — safe to call from FastAPI BackgroundTasks.
+    Scrapes Google Maps via Apify and ingests results into the database.
+    Returns the number of new leads inserted.
+    """
+    logger.info(f"Scraping job started for query: '{query}'")
+
     db = SessionLocal()
     try:
         scraper = GoogleMapsScraper()
-        print("DEBUG WORKER: Calling Apify Actor...", flush=True)
         data = scraper.scrape(search_query=query)
-        print(f"DEBUG WORKER: Apify call complete. Found {len(data)} items.", flush=True)
+        logger.info(f"Apify returned {len(data)} raw items for '{query}'")
 
         inserted = ingest_leads(db=db, scraped_data=data)
-        print(f"DEBUG WORKER: Ingestion complete. Rows committed: {inserted}", flush=True)
+        logger.info(f"Scraping job complete. {inserted} new leads inserted for '{query}'")
         return inserted
+
     except Exception as e:
-        print(f"CRITICAL WORKER CRASH: {str(e)}", file=sys.stderr, flush=True)
-        logger.error(f"Scraping background pipeline execution crash: {str(e)}")
-        raise e
+        logger.error(f"Scraping job crashed for query '{query}': {e}", exc_info=True)
+        raise
     finally:
         db.close()

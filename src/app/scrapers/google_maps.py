@@ -1,70 +1,54 @@
-import os
 import logging
 from apify_client import ApifyClient
-from sqlalchemy.orm import Session
+from src.app.core.settings import settings
 
 logger = logging.getLogger("lead-engine.scrapers.google_maps")
-logger.setLevel(logging.INFO)
 
-def execute_apify_scraping_workflow(query: str, session_factory):
+
+class GoogleMapsScraper:
     """
-    Executes real-time Google Maps scraping sequence via Apify.
+    Wraps the Apify Google Maps scraper actor.
+    Returns a list of raw dicts — ingestion/deduplication is handled by lead_ingestor.
     """
-    from src.app.main import Lead  # Safe cross-import now that model exists
 
-    apify_token = os.getenv("APIFY_API_TOKEN")
-    if not apify_token:
-        logger.error("Failed to execute Apify scraping workflow: APIFY_API_TOKEN is missing from environment keys.")
-        return
+    def __init__(self):
+        if not settings.APIFY_API_TOKEN:
+            raise RuntimeError("APIFY_API_TOKEN is not set. Cannot initialise scraper.")
+        self.client = ApifyClient(settings.APIFY_API_TOKEN)
 
-    client = ApifyClient(apify_token)
-    run_input = {
-        "searchStrings": [query],
-        "maxCrawledPlacesPerSearch": 10,
-        "language": "en"
-    }
-    
-    try:
-        logger.info(f"Launching Apify search automation query execution context: {query}")
-        run = client.actor("compass~google-maps-scraper").call(run_input=run_input)
-        dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
-        logger.info(f"Apify call completed successfully. Extracted {len(dataset_items)} raw elements.")
-        
-        db: Session = session_factory()
+    def scrape(self, search_query: str, max_results: int = 20) -> list[dict]:
+        run_input = {
+            "searchStrings": [search_query],
+            "maxCrawledPlacesPerSearch": max_results,
+            "language": "en",
+        }
+
+        logger.info(f"Launching Apify actor for query: '{search_query}'")
         try:
-            inserted_count = 0
-            for item in dataset_items:
-                title = item.get("title") or item.get("name")
-                if not title or title == "Unknown Business":
-                    continue
-                    
-                phone = item.get("phone") or item.get("internationalPhone") or None
-                address = item.get("address") or item.get("locatedIn") or None
-                email = item.get("email") or "no-email@fallback.com"
+            run = self.client.actor("compass~google-maps-scraper").call(run_input=run_input)
+            items = self.client.dataset(run["defaultDatasetId"]).list_items().items
+            logger.info(f"Apify returned {len(items)} raw items for '{search_query}'")
+            return items
+        except Exception as e:
+            logger.error(f"Apify scraping failed for query '{search_query}': {e}")
+            raise
 
-                if phone:
-                    exists = db.query(Lead).filter(Lead.phone == phone).first()
-                    if exists:
-                        continue
 
-                new_lead = Lead(
-                    title=title,
-                    phone=phone,
-                    email=email,
-                    address=address,
-                    query=query
-                )
-                db.add(new_lead)
-                inserted_count += 1
-            
-            db.commit()
-            logger.info(f"Database Ingestion complete. Rows successfully committed: {inserted_count}")
-        except Exception as db_err:
-            db.rollback()
-            logger.error(f"Database transaction failure during ingestion execution: {str(db_err)}")
-        finally:
-            db.close()
-            logger.info("Database worker execution context session safely released back to core connection pool.")
-            
+# Keep the old function name for any legacy callers
+def execute_apify_scraping_workflow(query: str, session_factory) -> None:
+    """Legacy entry point — delegates to GoogleMapsScraper + lead_ingestor."""
+    from src.app.scrapers.lead_ingestor import ingest_leads
+
+    scraper = GoogleMapsScraper()
+    items = scraper.scrape(search_query=query)
+
+    db = session_factory()
+    try:
+        inserted = ingest_leads(db=db, scraped_data=items)
+        logger.info(f"Legacy workflow: inserted {inserted} leads for query '{query}'")
     except Exception as e:
-        logger.error(f"Failed to execute Apify scraping workflow processing stack: {str(e)}")
+        db.rollback()
+        logger.error(f"Ingestion failed in legacy workflow: {e}")
+        raise
+    finally:
+        db.close()

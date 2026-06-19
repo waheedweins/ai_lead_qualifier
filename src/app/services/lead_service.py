@@ -3,6 +3,7 @@ from src.app.crud.lead import create_lead, get_leads, get_lead_by_email
 from src.app.schemas.lead import LeadCreate
 from src.app.services.ai_service import AIService
 
+
 class LeadService:
     def __init__(self, db: Session):
         self.db = db

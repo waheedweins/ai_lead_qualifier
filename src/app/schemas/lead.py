@@ -1,11 +1,13 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
+
 class LeadCreate(BaseModel):
     name: str | None = None
     email: EmailStr
     phone: str | None = None
     source: str
+
 
 class LeadResponse(BaseModel):
     id: int

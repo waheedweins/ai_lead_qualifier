@@ -1,14 +1,16 @@
 import time
 import logging
 
-logger = logging.getLogger("retry")
+logger = logging.getLogger("lead-engine.retry")
 
-def retry(fn, retries=3, delay=2):
+
+def retry(fn, retries: int = 3, delay: float = 2.0):
+    """Simple synchronous retry wrapper with exponential back-off."""
     for attempt in range(retries):
         try:
             return fn()
         except Exception as e:
-            logger.warning(f"Attempt {attempt+1} failed: {e}")
+            logger.warning(f"Attempt {attempt + 1}/{retries} failed: {e}")
             if attempt == retries - 1:
                 raise
-            time.sleep(delay)
+            time.sleep(delay * (attempt + 1))

@@ -15,11 +15,24 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
+  migrate:
     build: .
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/lead_engine
+      APIFY_API_TOKEN: dummy_for_local
+    command: ["alembic", "upgrade", "head"]
     depends_on:
       postgres:
         condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      PYTHONPATH: /app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - .env
     ports:

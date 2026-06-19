@@ -1,10 +1,15 @@
+import logging
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
+
+logger = logging.getLogger("lead-engine.langgraph")
+
 
 class AgentState(TypedDict):
     lead: dict
     score: int
     decision: str
+
 
 def score_lead(state: AgentState) -> AgentState:
     lead = state["lead"]
@@ -17,11 +22,15 @@ def score_lead(state: AgentState) -> AgentState:
     if lead.get("name"):
         score += 10
     state["score"] = score
+    logger.debug(f"Scored lead {email} -> {score}")
     return state
+
 
 def decide(state: AgentState) -> AgentState:
     state["decision"] = "hot" if state["score"] >= 70 else "cold"
+    logger.debug(f"Decision for lead: {state['decision']}")
     return state
+
 
 def build_graph():
     graph = StateGraph(AgentState)
@@ -31,5 +40,6 @@ def build_graph():
     graph.add_edge("score", "decide")
     graph.add_edge("decide", END)
     return graph.compile()
+
 
 lead_scoring_graph = build_graph()

@@ -1,3 +1,4 @@
+import logging
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from src.app.workers.scraping_worker import run_scraping_job
@@ -5,18 +6,21 @@ from src.app.workers.lead_processor import process_lead
 from src.app.core.database import SessionLocal
 from src.app.models.lead import Lead
 
+logger = logging.getLogger("lead-engine.main-workflow")
+
+
 class WorkflowState(TypedDict):
     query: str
     results_count: int
 
+
 def scrape_and_ingest(state: WorkflowState) -> WorkflowState:
-    # 1. Scrape from Google Maps and save to RDS
     count = run_scraping_job(state["query"])
     state["results_count"] = count
     return state
 
+
 def process_and_outreach(state: WorkflowState) -> WorkflowState:
-    # 2. Fetch the new leads and run them through LangGraph scoring/outreach
     db = SessionLocal()
     try:
         new_leads = db.query(Lead).filter(Lead.status == "new").all()
@@ -25,17 +29,20 @@ def process_and_outreach(state: WorkflowState) -> WorkflowState:
                 "name": lead.name,
                 "email": lead.email,
                 "phone": lead.phone,
-                "source": lead.source
+                "source": lead.source,
             }
             process_lead(lead_data)
             lead.status = "processed"
         db.commit()
+        logger.info(f"Processed {len(new_leads)} leads.")
     except Exception as e:
         db.rollback()
-        raise e
+        logger.error(f"Outreach processing failed: {e}", exc_info=True)
+        raise
     finally:
         db.close()
     return state
+
 
 def build_graph():
     builder = StateGraph(WorkflowState)
@@ -45,5 +52,6 @@ def build_graph():
     builder.add_edge("scrape", "process")
     builder.add_edge("process", END)
     return builder.compile()
+
 
 workflow = build_graph()
