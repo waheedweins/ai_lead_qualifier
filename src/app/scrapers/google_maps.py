@@ -31,7 +31,7 @@ class GoogleMapsScraper:
         try:
             # Using the identifier from your Apify console
             # If this fails, it now logs the error instead of crashing the server
-            run = self.client.actor("compass/crawler-google-places").call(run_input=run_input)
+            run = self.client.actor("nwua9Gu5YrADL7ZDj").call(run_input=run_input)
             
             dataset_id = run.get("defaultDatasetId")
             items = self.client.dataset(dataset_id).list_items().items
