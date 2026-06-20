@@ -17,7 +17,6 @@ class GoogleMapsScraper:
         self.client = ApifyClient(settings.APIFY_API_TOKEN)
 
     def scrape(self, search_query: str, max_results: int = 20) -> list[dict]:
-        # FIX 1: Changed "searchStrings" to "searchStringsArray" to match the Apify Schema
         run_input = {
             "searchStringsArray": [search_query],
             "maxCrawledPlacesPerSearch": max_results,
@@ -26,12 +25,12 @@ class GoogleMapsScraper:
 
         logger.info(f"Launching Apify actor for query: '{search_query}'")
         try:
-            # FIX 2: Corrected the actor path string identifier
             run = self.client.actor("compass/crawler-google-places").call(run_input=run_input)
-            
-            # FIX 3: Safely extract dataset ID property fields from the run object
-            dataset_id = run["defaultDatasetId"]
-            
+
+            dataset_id = (run or {}).get("defaultDatasetId")
+            if not dataset_id:
+                raise RuntimeError(f"Apify actor returned no dataset ID. Run result: {run}")
+
             items = self.client.dataset(dataset_id).list_items().items
             logger.info(f"Apify returned {len(items)} raw items for '{search_query}'")
             return items
@@ -40,7 +39,6 @@ class GoogleMapsScraper:
             raise
 
 
-# Keep the old function name for any legacy callers
 def execute_apify_scraping_workflow(query: str, session_factory) -> None:
     """Legacy entry point — delegates to GoogleMapsScraper + lead_ingestor."""
     from src.app.scrapers.lead_ingestor import ingest_leads
