@@ -30,7 +30,7 @@ class GoogleMapsScraper:
             run = self.client.actor("compass/crawler-google-places").call(run_input=run_input)
             
             # FIX 3: Safely extract dataset ID property fields from the run object
-            dataset_id = run.get("defaultDatasetId") if hasattr(run, "get") else run["defaultDatasetId"]
+            dataset_id = run["defaultDatasetId"]
             
             items = self.client.dataset(dataset_id).list_items().items
             logger.info(f"Apify returned {len(items)} raw items for '{search_query}'")
