@@ -11,17 +11,17 @@ def ingest_leads(db: Session, scraped_data: list) -> int:
     inserted = 0
 
     for item in scraped_data:
+        # 1. Extraction: Get data from Apify response with fallbacks
         business_name = item.get("title") or item.get("name") or "Unknown Business"
         phone = item.get("phone") or item.get("phoneNumber") or ""
         email = item.get("email") or ""
         category = item.get("categoryName") or item.get("title") or "General"
-        # Extract address safely
         address = item.get("address") or item.get("fullAddress") or None
 
         phone = str(phone).strip()
         email = str(email).strip()
 
-        # Deduplication
+        # 2. Deduplication
         if phone and phone not in ("No Phone Provided", ""):
             if get_lead_by_phone(db, phone):
                 continue
@@ -35,15 +35,22 @@ def ingest_leads(db: Session, scraped_data: list) -> int:
         if get_lead_by_email(db, email):
             continue
 
+        # 3. Construction: Explicitly filter fields to match LeadCreate schema
+        # This prevents 'AttributeError' by ensuring no extra fields (like 'query') are passed
         try:
-            lead = LeadCreate(
-                name=business_name,
-                email=email,
-                phone=phone or None,
-                source="google_maps",
-                title=category,
-                address=address # Now matches the schema
-            )
+            lead_data = {
+                "name": business_name,
+                "email": email,
+                "phone": phone or None,
+                "source": "google_maps",
+                "title": category,
+                "address": address
+            }
+            
+            # Create schema object
+            lead = LeadCreate(**lead_data)
+            
+            # Save to database
             service.create(lead)
             inserted += 1
         except Exception as e:
