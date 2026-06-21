@@ -1,4 +1,3 @@
-%%writefile src/app/crud/lead.py
 from sqlalchemy.orm import Session
 from src.app.models.lead import Lead
 from src.app.schemas.lead import LeadCreate
