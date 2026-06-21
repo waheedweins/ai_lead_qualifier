@@ -1,19 +1,20 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from typing import Optional
 
 class LeadCreate(BaseModel):
-    name: str | None = None
+    name: Optional[str] = None
     email: EmailStr
-    phone: str | None = None
+    phone: Optional[str] = None
     source: str
-    title: str
-    address: str | None = None  # Added this to match scraper output
+    title: Optional[str] = None    # Changed to Optional to prevent validation errors
+    address: Optional[str] = None
 
 class LeadResponse(BaseModel):
     id: int
-    name: str | None
+    name: Optional[str] = None
     email: EmailStr
-    phone: str | None
+    phone: Optional[str] = None
     source: str
     status: str
     ai_score: int
