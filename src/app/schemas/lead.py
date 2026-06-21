@@ -7,7 +7,7 @@ class LeadCreate(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     source: str
-    title: Optional[str] = None    # Changed to Optional to prevent validation errors
+    title: Optional[str] = None
     address: Optional[str] = None
 
 class LeadResponse(BaseModel):
