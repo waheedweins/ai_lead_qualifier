@@ -14,8 +14,6 @@ class Lead(Base):
     status = Column(String, default="new", nullable=False)
     ai_score = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    
-    # ADD THESE COLUMNS
     title = Column(String, nullable=True)
     address = Column(String, nullable=True)
 
