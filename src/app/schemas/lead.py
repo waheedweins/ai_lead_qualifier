@@ -7,6 +7,7 @@ class LeadCreate(BaseModel):
     email: EmailStr
     phone: str | None = None
     source: str
+    title: str
 
 
 class LeadResponse(BaseModel):
