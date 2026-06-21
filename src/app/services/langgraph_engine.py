@@ -1,45 +1,41 @@
 import logging
-from typing import TypedDict
 from langgraph.graph import StateGraph, END
+from typing import TypedDict, Annotated, List
+import operator
 
-logger = logging.getLogger("lead-engine.langgraph")
-
-
+# 1. Define your State structure
 class AgentState(TypedDict):
-    lead: dict
-    score: int
-    decision: str
+    score: Annotated[int, operator.add]
+    query: str
+    results: List[dict]
 
+logger = logging.getLogger("lead-engine.services.langgraph_engine")
 
-def score_lead(state: AgentState) -> AgentState:
-    lead = state["lead"]
-    email = lead.get("email", "")
-    score = 50
-    if "gmail" in email:
-        score += 20
-    if lead.get("phone"):
-        score += 10
-    if lead.get("name"):
-        score += 10
-    state["score"] = score
-    logger.debug(f"Scored lead {email} -> {score}")
-    return state
+# 2. Your node function
+def score_lead(state: AgentState):
+    logger.info(f"Scoring lead for query: {state.get('query')}")
+    # Example logic: add 10 to the score
+    return {"score": 10}
 
-
-def decide(state: AgentState) -> AgentState:
-    state["decision"] = "hot" if state["score"] >= 70 else "cold"
-    logger.debug(f"Decision for lead: {state['decision']}")
-    return state
-
-
+# 3. Build the graph
 def build_graph():
+    # Initialize the graph with the state schema
     graph = StateGraph(AgentState)
-    graph.add_node("score", score_lead)
-    graph.add_node("decide", decide)
-    graph.set_entry_point("score")
-    graph.add_edge("score", "decide")
-    graph.add_edge("decide", END)
+
+    # Add the node with a unique name that doesn't conflict with state keys
+    graph.add_node("scoring_node", score_lead)
+    
+    # Define the flow
+    graph.set_entry_point("scoring_node")
+    graph.add_edge("scoring_node", END)
+
+    # Compile the graph
     return graph.compile()
 
-
-lead_scoring_graph = build_graph()
+# 4. Global graph instance for your service
+try:
+    lead_scoring_graph = build_graph()
+    logger.info("LangGraph initialized successfully.")
+except Exception as e:
+    logger.error(f"Failed to initialize LangGraph: {e}")
+    lead_scoring_graph = None
