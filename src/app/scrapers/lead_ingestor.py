@@ -18,25 +18,33 @@ def ingest_leads(db: Session, scraped_data: list) -> int:
         category = item.get("categoryName") or item.get("title") or "General"
         address = item.get("address") or item.get("fullAddress") or None
 
+        # Clean string inputs
         phone = str(phone).strip()
         email = str(email).strip()
+
+        # Debugging: Log if we are about to skip due to missing contact info
+        if not phone and not email:
+            logger.warning(f"Skipping lead '{business_name}': No phone or email found.")
+            continue
 
         # 2. Deduplication
         if phone and phone not in ("No Phone Provided", ""):
             if get_lead_by_phone(db, phone):
+                logger.info(f"Skipping duplicate phone: {phone}")
                 continue
 
         if not email:
             if phone and phone not in ("No Phone Provided", ""):
+                # Generate placeholder email if phone exists
                 email = f"no_email_{phone.replace('+', '').replace(' ', '')}@placeholder.com"
             else:
                 continue
 
         if get_lead_by_email(db, email):
+            logger.info(f"Skipping duplicate email: {email}")
             continue
 
-        # 3. Construction: Explicitly filter fields to match LeadCreate schema
-        # This prevents 'AttributeError' by ensuring no extra fields (like 'query') are passed
+        # 3. Construction: Explicitly map fields to match LeadCreate schema
         try:
             lead_data = {
                 "name": business_name,
@@ -47,12 +55,12 @@ def ingest_leads(db: Session, scraped_data: list) -> int:
                 "address": address
             }
             
-            # Create schema object
+            # Create schema object and save
             lead = LeadCreate(**lead_data)
-            
-            # Save to database
             service.create(lead)
             inserted += 1
+            logger.info(f"Successfully ingested: {business_name}")
+            
         except Exception as e:
             logger.error(f"Failed to create lead schema for {business_name}: {e}")
 
