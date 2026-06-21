@@ -6,16 +6,18 @@ logger = logging.getLogger("lead-engine.scrapers.google_maps")
 
 class GoogleMapsScraper:
     """
-    Wraps the Apify Google Maps scraper actor.
+    Wraps the Apify Google Maps scraper using the friendly name.
     """
 
     def __init__(self):
-        # Initialization does not crash the app if token is missing
-        if not settings.APIFY_API_TOKEN:
-            logger.error("APIFY_API_TOKEN is not set.")
-            self.client = None
-        else:
-            self.client = ApifyClient(settings.APIFY_API_TOKEN)
+        # Initialization does not crash the app
+        self.token = settings.APIFY_API_TOKEN
+        self.client = ApifyClient(self.token) if self.token else None
+        
+        # Friendly name as requested
+        self.actor_name = "compass/crawler-google-places"
+        # Alphanumeric fallback in case name resolution fails
+        self.actor_id_fallback = "nwua9Gu5YrADL7ZDj"
 
     def scrape(self, search_query: str, max_results: int = 20) -> list[dict]:
         if not self.client:
@@ -27,28 +29,33 @@ class GoogleMapsScraper:
             "language": "en",
         }
 
-        logger.info(f"Launching Apify actor for query: '{search_query}'")
+        logger.info(f"Launching Apify actor: {self.actor_name} for query: '{search_query}'")
+        
         try:
-            # Using the identifier from your Apify console
-            # If this fails, it now logs the error instead of crashing the server
-            run = self.client.actor("nwua9Gu5YrADL7ZDj").call(run_input=run_input)
+            # Try calling via friendly name
+            run = self.client.actor(self.actor_name).call(run_input=run_input)
+        except Exception as name_error:
+            logger.warning(f"Friendly name failed, attempting fallback to ID: {name_error}")
+            # Fallback to the permanent ID if the name fails
+            run = self.client.actor(self.actor_id_fallback).call(run_input=run_input)
             
-            dataset_id = run.get("defaultDatasetId")
-            items = self.client.dataset(dataset_id).list_items().items
-            
-            logger.info(f"Apify returned {len(items)} raw items for '{search_query}'")
-            return items
-            
-        except Exception as e:
-            logger.error(f"Apify scraping failed for query '{search_query}': {e}")
-            # Re-raise only if you want the API endpoint to return 500
-            raise
+        dataset_id = run.get("defaultDatasetId")
+        if not dataset_id:
+            logger.error("No dataset ID returned from Apify.")
+            return []
+
+        items = self.client.dataset(dataset_id).list_items().items
+        logger.info(f"Apify returned {len(items)} items for '{search_query}'")
+        return items
 
 def execute_apify_scraping_workflow(query: str, session_factory) -> None:
     from src.app.scrapers.lead_ingestor import ingest_leads
 
     scraper = GoogleMapsScraper()
     items = scraper.scrape(search_query=query)
+
+    if not items:
+        return
 
     db = session_factory()
     try:
