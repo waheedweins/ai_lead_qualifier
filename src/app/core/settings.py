@@ -45,7 +45,6 @@ class Settings(BaseSettings):
 
                 for key, value in secret_dict.items():
                     if hasattr(self, key) and not getattr(self, key):
-                        # Use object.__setattr__ because pydantic models are frozen after init
                         object.__setattr__(self, key, value)
 
                 logger.info("Secrets loaded from AWS Secrets Manager successfully.")
@@ -58,8 +57,9 @@ class Settings(BaseSettings):
         logger.info(f"SENDGRID_API_KEY present: {bool(self.SENDGRID_API_KEY)}")
         logger.info(f"WHATSAPP_TOKEN present: {bool(self.WHATSAPP_TOKEN)}")
 
-        # Validate required keys
-        required_keys = ["DATABASE_URL", "APIFY_API_TOKEN"]
+        # Only DATABASE_URL is required at startup.
+        # APIFY_API_TOKEN is validated at scrape time in GoogleMapsScraper.scrape()
+        required_keys = ["DATABASE_URL"]
         missing = [k for k in required_keys if not getattr(self, k)]
         if missing:
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
@@ -69,10 +69,9 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """
     Cached singleton — avoids re-instantiating Settings (and re-calling Secrets Manager)
-    on every module import. Use get_settings() everywhere instead of bare `settings`.
+    on every module import.
     """
     return Settings()
 
 
-# Module-level alias for backwards compatibility with existing imports
 settings = get_settings()
