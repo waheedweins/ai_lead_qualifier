@@ -1,9 +1,8 @@
 import logging
 from src.app.core.logging import logger
-from src.app.core.database import SessionLocal
+from src.app.core.database import get_sessionmaker  # ✅ Fixed: Importing the lazy loader function
 from src.app.scrapers.google_maps import GoogleMapsScraper
 from src.app.scrapers.lead_ingestor import ingest_leads
-
 
 def run_scraping_job(query: str) -> int:
     """
@@ -13,7 +12,10 @@ def run_scraping_job(query: str) -> int:
     """
     logger.info(f"Scraping job started for query: '{query}'")
 
+    # ✅ Fixed: Initialize the SessionLocal factory lazily at runtime
+    SessionLocal = get_sessionmaker()
     db = SessionLocal()
+    
     try:
         scraper = GoogleMapsScraper()
         data = scraper.scrape(search_query=query)
